@@ -106,7 +106,6 @@ namespace paramore.brighter.commandprocessor.messaginggateway.rmq
         {
             try
             {
-                EnsureChannel();
                 Logger.DebugFormat("RmqMessageConsumer: Purging channel {0}", _queueName);
 
                 try

@@ -124,7 +124,7 @@ namespace paramore.brighter.commandprocessor.messaginggateway.rmq
         /// </summary>
         /// <param name="queueName">Name of the queue.</param>
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
-        protected void EnsureChannel()
+        private void EnsureChannel()
         {
             ConnectWithCircuitBreaker();
         }
@@ -143,17 +143,14 @@ namespace paramore.brighter.commandprocessor.messaginggateway.rmq
         {
             EnsureChannel();
 
-            _retryPolicy.Execute(() =>
-                    ExecuteOnChannelAsThreadUnsafe(c =>
-                    {
-                        modelFunc.Invoke(_channel);
-                    }));
+            ExecuteOnChannelAsThreadUnsafe(c =>
+                {
+                    modelFunc.Invoke(_channel);
+                });
         }
 
         protected void PublishMessage(Message message, int delayMilliseconds, bool regenerate = false)
         {
-            EnsureChannel();
-
             _retryPolicy.Execute(() =>
                     ExecuteOnChannelAsThreadUnsafe(c =>
                     {
@@ -191,7 +188,7 @@ namespace paramore.brighter.commandprocessor.messaginggateway.rmq
                             false,
                             CreateBasicProperties(messageId, message.Header.TimeStamp, headers),
                             Encoding.UTF8.GetBytes(message.Body.Value));
-            }));
+                    }));
         }
 
         protected QueueingBasicConsumer CreateQueueingConsumer()
@@ -214,21 +211,19 @@ namespace paramore.brighter.commandprocessor.messaginggateway.rmq
                 if (connection.AutoClose == false)
                     connection.AutoClose = true;
 
-                _retryPolicy.Execute(() =>
-                    ExecuteOnChannelAsThreadUnsafe(c =>
-                    {
-                        Logger.DebugFormat("RMQMessagingGateway: Configuring QosPrefetchSize of {0} on connection {1}", Configuration.Queues.QosPrefetchSize, Configuration.AMPQUri.GetSanitizedUri());
+                ExecuteOnChannelAsThreadUnsafe(c =>
+                {
+                    Logger.DebugFormat("RMQMessagingGateway: Configuring QosPrefetchSize of {0} on connection {1}", Configuration.Queues.QosPrefetchSize, Configuration.AMPQUri.GetSanitizedUri());
 
-                        // Configure the Quality of service for the model.
-                        // BasicQos(0="Don't send me a new message until I?ve finished",  1= "Send me one message at a time", false ="Applied separately to each new consumer on the channel")
-                        c.BasicQos(0, Configuration.Queues.QosPrefetchSize, false);
+                    // Configure the Quality of service for the model.
+                    // BasicQos(0="Don't send me a new message until I?ve finished",  1= "Send me one message at a time", false ="Applied separately to each new consumer on the channel")
+                    c.BasicQos(0, Configuration.Queues.QosPrefetchSize, false);
 
-                        Logger.DebugFormat("RMQMessagingGateway: Declaring exchange {0} on connection {1}", Configuration.Exchange.Name, Configuration.AMPQUri.GetSanitizedUri());
+                    Logger.DebugFormat("RMQMessagingGateway: Declaring exchange {0} on connection {1}", Configuration.Exchange.Name, Configuration.AMPQUri.GetSanitizedUri());
 
-                        //desired state configuration of the exchange
-                        c.DeclareExchangeForConfiguration(Configuration);
-                    })
-                , new Dictionary<string, object> { { "queueName", _queueName } });
+                    //desired state configuration of the exchange
+                    c.DeclareExchangeForConfiguration(Configuration);
+                });
             }
         }
 
@@ -283,9 +278,9 @@ namespace paramore.brighter.commandprocessor.messaginggateway.rmq
             }
             catch (LockTimeoutException e)
             {
-/*#if DEBUG
-                StackTrace otherStack = e.GetBlockingStackTrace(5000);
-#endif*/
+                /*#if DEBUG
+                                StackTrace otherStack = e.GetBlockingStackTrace(5000);
+                #endif*/
 
                 Logger.InfoException(
                     "RMQMessagingGateway: Couldn't acquire lock on thread-unsafe Channel operation on queue {0} exchange {1} on connection {2}.",
